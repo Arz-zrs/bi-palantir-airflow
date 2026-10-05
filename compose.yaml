@@ -1,0 +1,81 @@
+services:
+  oltp:
+    image: postgres:16-alpine
+    container_name: palantir_oltp
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: palantir_oltp_pg
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d palantir_oltp_pg"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - palantir_pgdata:/var/lib/postgresql/data
+
+  seeder:
+    build:
+      context: .
+      dockerfile: Dockerfile.seeder
+    container_name: palantir_seeder
+    environment:
+      DB_HOST: oltp
+      DB_PORT: 5432
+      DB_NAME: palantir_oltp_pg
+      DB_USER: admin
+      DB_PASSWORD: password
+    depends_on:
+      oltp:
+        condition: service_healthy
+  
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile.sqlalchemy
+    container_name: palantir_etl
+    environment:
+      OLTP_HOST: oltp
+      OLTP_PORT: 5432
+      OLTP_NAME: palantir_oltp_pg
+      OLTP_USER: admin
+      OLTP_PASSWORD: password
+      DW_HOST: dw
+      DW_PORT: 5432
+      DW_NAME: palantir_dw_pg
+      DW_USER: admin
+      DW_PASSWORD: password
+    volumes:
+      - ./etl:/app
+    depends_on:
+      oltp:
+        condition: service_healthy
+      dw:
+        condition: service_healthy
+      seeder:
+        condition: service_completed_successfully
+  
+  dw:
+    image: postgres:16-alpine
+    container_name: palantir_dw
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: palantir_dw_pg
+    ports:
+      - "5431:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d palantir_dw_pg"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./init_dw.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - palantir_dw_pgdata:/var/lib/postgresql/data
+  
+volumes:
+  palantir_pgdata:
+  palantir_dw_pgdata:
