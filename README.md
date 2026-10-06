@@ -297,22 +297,23 @@ git clone https://github.com/orizynpx/bi-palantir-db.git
 2. Run this command:
 
 ```sh
+mkdir -p ./logs ./plugins ./config
 echo "AIRFLOW_UID=$(id -u)" > .env
 ```
 
-2. Run the Docker Compose command (it initializes and seeds the Postgre DB):
+3. Run Docker Compose:
 
 ```sh
 docker compose up -d
 ```
 
-3. Enter the database shell to write SQL statements:
+4. Run the Python file manually:
 
 ```sh
-docker exec -it palantir_db psql -U admin -d palantir_ops
+docker exec -it palantir_airflow_scheduler python /opt/airflow/dags/palantir_etl_dag.py
 ```
 
-4. Use this SQL statement to verify the number of rows for each of the transactional tables:
+5. Use this SQL statement to verify the number of rows for each of the transactional tables:
 
 ```sh
 SELECT 'dim_sensor' AS table_name, COUNT(*) AS row_count FROM dim_sensor
