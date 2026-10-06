@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import pandas as pd
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 default_args = {
@@ -303,7 +303,7 @@ def load_fact_telemetry_snapshot():
 with DAG(
     dag_id="palantir_star_schema_etl",
     default_args=default_args,
-    schedule_interval="@hourly",
+    schedule="@hourly",           # <-- Changed from schedule_interval
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=["palantir", "etl"],
