@@ -1,3 +1,26 @@
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.1
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-meta-pg:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    # Additional pip dependencies for ETL tasks
+    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres pandas sqlalchemy"
+    # Pre-configured connections accessible via PostgresHook(postgres_conn_id='...')
+    AIRFLOW_CONN_OLTP_CONN: "postgresql://admin:password@oltp:5432/palantir_oltp_pg"
+    AIRFLOW_CONN_DW_CONN: "postgresql://admin:password@dw:5432/palantir_dw_pg"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./config:/opt/airflow/config
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    airflow-meta-pg:
+      condition: service_healthy
+
 services:
   oltp:
     image: postgres:16-alpine
@@ -31,33 +54,7 @@ services:
     depends_on:
       oltp:
         condition: service_healthy
-  
-  etl:
-    build:
-      context: .
-      dockerfile: Dockerfile.sqlalchemy
-    container_name: palantir_etl
-    environment:
-      OLTP_HOST: oltp
-      OLTP_PORT: 5432
-      OLTP_NAME: palantir_oltp_pg
-      OLTP_USER: admin
-      OLTP_PASSWORD: password
-      DW_HOST: dw
-      DW_PORT: 5432
-      DW_NAME: palantir_dw_pg
-      DW_USER: admin
-      DW_PASSWORD: password
-    volumes:
-      - ./etl:/app
-    depends_on:
-      oltp:
-        condition: service_healthy
-      dw:
-        condition: service_healthy
-      seeder:
-        condition: service_completed_successfully
-  
+
   dw:
     image: postgres:16-alpine
     container_name: palantir_dw
@@ -75,7 +72,60 @@ services:
     volumes:
       - ./init_dw.sql:/docker-entrypoint-initdb.d/01_init.sql
       - palantir_dw_pgdata:/var/lib/postgresql/data
-  
+
+  airflow-meta-pg:
+    image: postgres:16-alpine
+    container_name: palantir_airflow_meta
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      retries: 5
+    volumes:
+      - palantir_airflow_meta_data:/var/lib/postgresql/data
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: palantir_airflow_init
+    command: version
+    environment:
+      <<: *airflow-common
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: palantir_airflow_webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: palantir_airflow_scheduler
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      oltp:
+        condition: service_healthy
+      dw:
+        condition: service_healthy
+
 volumes:
   palantir_pgdata:
   palantir_dw_pgdata:
+  palantir_airflow_meta_data:
