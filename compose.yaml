@@ -32,9 +32,10 @@ services:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d palantir_oltp_pg"]
-      interval: 3s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 90s
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/01_init.sql
       - palantir_pgdata:/var/lib/postgresql/data
@@ -65,9 +66,10 @@ services:
       - "5431:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d palantir_dw_pg"]
-      interval: 3s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 90s
     volumes:
       - ./init_dw.sql:/docker-entrypoint-initdb.d/01_init.sql
       - palantir_dw_pgdata:/var/lib/postgresql/data
@@ -83,7 +85,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 90s
     volumes:
       - palantir_airflow_meta_data:/var/lib/postgresql/data
 
