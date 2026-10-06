@@ -10,7 +10,8 @@ x-airflow-common: &airflow-common
     _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-standard apache-airflow-providers-postgres pandas sqlalchemy"
     AIRFLOW_CONN_OLTP_CONN: "postgresql://admin:password@oltp:5432/palantir_oltp_pg"
     AIRFLOW_CONN_DW_CONN: "postgresql://admin:password@dw:5432/palantir_dw_pg"
-    AIRFLOW__API__SECRET_KEY: 'test123'
+    AIRFLOW__API__SECRET_KEY: 'test123' # Move this to a secure location later
+    AIRFLOW__API_AUTH__JWT_SECRET: 'test321' # Move this to a secure location later
   volumes:
     - ./dags:/opt/airflow/dags
     - airflow_logs:/opt/airflow/logs
