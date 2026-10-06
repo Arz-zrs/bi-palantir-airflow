@@ -1,12 +1,13 @@
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.9.1
+  image: apache/airflow:3.3.2
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-meta-pg:5432/airflow
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres pandas sqlalchemy"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-api-server:8080/execution/'
+    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-standard apache-airflow-providers-postgres pandas sqlalchemy"
     AIRFLOW_CONN_OLTP_CONN: "postgresql://admin:password@oltp:5432/palantir_oltp_pg"
     AIRFLOW_CONN_DW_CONN: "postgresql://admin:password@dw:5432/palantir_dw_pg"
   volumes:
@@ -53,7 +54,6 @@ services:
       oltp:
         condition: service_healthy
 
-
   dw:
     image: postgres:16-alpine
     container_name: palantir_dw
@@ -98,10 +98,10 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin
 
-  airflow-webserver:
+  airflow-api-server:
     <<: *airflow-common
-    container_name: palantir_airflow_webserver
-    command: webserver
+    container_name: palantir_airflow_api_server
+    command: api-server
     ports:
       - "8080:8080"
     healthcheck:
@@ -128,5 +128,4 @@ services:
 volumes:
   palantir_pgdata:
   palantir_dw_pgdata:
-  palantir_airflow_meta_data:
   palantir_airflow_meta_data:
