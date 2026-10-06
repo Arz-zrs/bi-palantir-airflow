@@ -31,6 +31,7 @@ def load_dim_date():
         "day_of_week": dates.dayofweek + 1,
     })
     with dw_engine.begin() as conn:
+        conn.exec_driver_sql("TRUNCATE TABLE dim_date CASCADE;")
         df.to_sql("dim_date", conn, if_exists="append", index=False, method="multi")
 
 def load_dim_time():
@@ -43,6 +44,7 @@ def load_dim_time():
         "second": times.second,
     })
     with dw_engine.begin() as conn:
+        conn.exec_driver_sql("TRUNCATE TABLE dim_time CASCADE;")
         df.to_sql("dim_time", conn, if_exists="append", index=False, chunksize=10000, method="multi")
 
 def load_dim_sensor():
