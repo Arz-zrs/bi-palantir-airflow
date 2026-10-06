@@ -3,6 +3,7 @@ import pandas as pd
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from sqlalchemy.types import Date
 
 default_args = {
     "owner": "airflow",
@@ -61,7 +62,13 @@ def load_dim_sensor():
     df = pd.read_sql(query, oltp_engine)
     with dw_engine.begin() as conn:
         conn.exec_driver_sql("TRUNCATE TABLE dim_sensor CASCADE;")
-        df.to_sql("dim_sensor", conn, if_exists="append", index=False)
+        df.to_sql(
+            "dim_sensor",
+            conn,
+            if_exists="append",
+            index=False,
+            dtype={"valid_to": Date(), "valid_from": Date()}
+        )
 
 def load_dim_mission():
     oltp_engine, dw_engine = get_db_engines()
