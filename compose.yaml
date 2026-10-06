@@ -13,7 +13,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__API__SECRET_KEY: 'test123'
   volumes:
     - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
+    - airflow_logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./config:/opt/airflow/config
   user: "${AIRFLOW_UID:-50000}:0"
@@ -138,6 +138,7 @@ services:
         condition: service_completed_successfully
 
 volumes:
+  airflow_logs:
   palantir_pgdata:
   palantir_dw_pgdata:
   palantir_airflow_meta_data:
