@@ -1,14 +1,12 @@
 x-airflow-common: &airflow-common
   image: apache/airflow:2.9.1
-  environment:
+  environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-meta-pg:5432/airflow
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    # Additional pip dependencies for ETL tasks
     _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres pandas sqlalchemy"
-    # Pre-configured connections accessible via PostgresHook(postgres_conn_id='...')
     AIRFLOW_CONN_OLTP_CONN: "postgresql://admin:password@oltp:5432/palantir_oltp_pg"
     AIRFLOW_CONN_DW_CONN: "postgresql://admin:password@dw:5432/palantir_dw_pg"
   volumes:
@@ -55,6 +53,7 @@ services:
       oltp:
         condition: service_healthy
 
+
   dw:
     image: postgres:16-alpine
     container_name: palantir_dw
@@ -83,6 +82,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
       interval: 5s
+      timeout: 5s
       retries: 5
     volumes:
       - palantir_airflow_meta_data:/var/lib/postgresql/data
@@ -92,7 +92,7 @@ services:
     container_name: palantir_airflow_init
     command: version
     environment:
-      <<: *airflow-common
+      <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: admin
@@ -128,4 +128,5 @@ services:
 volumes:
   palantir_pgdata:
   palantir_dw_pgdata:
+  palantir_airflow_meta_data:
   palantir_airflow_meta_data:
