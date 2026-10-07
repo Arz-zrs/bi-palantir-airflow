@@ -138,6 +138,18 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  airflow-triggerer:
+    <<: *airflow-common
+    container_name: palantir_airflow_triggerer
+    command: triggerer
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      oltp:
+        condition: service_healthy
+      dw:
+        condition: service_healthy
+
 volumes:
   airflow_logs:
   palantir_pgdata:
