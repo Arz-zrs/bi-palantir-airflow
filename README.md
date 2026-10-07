@@ -307,10 +307,10 @@ echo "AIRFLOW_UID=$(id -u)" > .env
 docker compose up -d
 ```
 
-4. Run the Python file manually:
+4. Run the DAG script through Airflow:
 
 ```sh
-docker exec -it palantir_airflow_scheduler python /opt/airflow/dags/palantir_etl_dag.py
+docker exec -it palantir_airflow_scheduler airflow dags test palantir_star_schema_etl 2026-10-07T00:00:00
 ```
 
 5. Use this SQL statement to verify the number of rows for each of the transactional tables:
