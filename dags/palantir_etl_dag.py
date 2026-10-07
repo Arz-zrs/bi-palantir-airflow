@@ -4,6 +4,11 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.types import Date
+from palantir_etl_transformations import (
+    transform_decision_rows,
+    transform_detection_rows,
+    transform_telemetry_rows,
+)
 
 default_args = {
     "owner": "airflow",
@@ -197,9 +202,8 @@ def load_fact_threat_detections():
                        .merge(dim_c, on="category_id", how="left") \
                        .merge(dim_g, on=["latitude", "longitude"], how="left")
 
+    merged = transform_detection_rows(merged)
     merged["detection_fact_id"] = merged["detection_id"]
-    merged["detected_date_key"] = pd.to_datetime(merged["detected_at"]).dt.strftime("%Y%m%d").astype(int)
-    merged["detection_count"] = 1
 
     fact_df = merged[[
         "detection_fact_id", "sensor_key", "mission_key", "category_key",
@@ -227,8 +231,6 @@ def load_fact_killchain_decisions():
             tep.kill_chain_latency_ms,
             EXTRACT(EPOCH FROM (odl.decided_at - tep.paired_at)) * 1000 AS operator_response_latency_ms,
             tep.kill_chain_latency_ms + (EXTRACT(EPOCH FROM (odl.decided_at - tep.paired_at)) * 1000) AS total_end_to_end_latency_ms,
-            CASE WHEN odl.decision_type = 'AUTHORIZE' THEN 1 ELSE 0 END AS is_authorized,
-            CASE WHEN odl.decision_type = 'OVERRIDE' THEN 1 ELSE 0 END AS is_overridden
         FROM operator_decision_logs odl
         JOIN targeting_effector_pairings tep ON odl.pairing_id = tep.pairing_id;
     """
@@ -248,7 +250,7 @@ def load_fact_killchain_decisions():
                       .merge(dim_e, on="effector_id", how="left") \
                       .merge(dim_o, on="operator_id", how="left")
 
-    merged["decided_date_key"] = pd.to_datetime(merged["decided_at"]).dt.strftime("%Y%m%d").astype(int)
+    merged = transform_decision_rows(merged)
 
     fact_df = merged[[
         "decision_fact_id", "sensor_key", "mission_key", "category_key",
@@ -289,11 +291,7 @@ def load_fact_telemetry_snapshot():
                       .merge(dim_m, on="mission_id", how="left") \
                       .merge(dim_g, on=["latitude", "longitude"], how="left")
 
-    merged["snapshot_date_key"] = pd.to_datetime(merged["timestamp"]).dt.strftime("%Y%m%d").astype(int)
-    merged["snapshot_time_key"] = pd.to_datetime(merged["timestamp"]).dt.strftime("%H%M%S").astype(int)
-    merged["avg_altitude_meters"] = merged["altitude_meters"]
-    merged["min_battery_bandwidth_pct"] = merged["battery_bandwidth_pct"]
-    merged["telemetry_event_count"] = 1
+    merged = transform_telemetry_rows(merged)
 
     fact_df = merged[[
         "telemetry_snapshot_id", "sensor_key", "mission_key", "geography_key",
