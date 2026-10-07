@@ -230,7 +230,7 @@ def load_fact_killchain_decisions():
             tep.pairing_status,
             tep.kill_chain_latency_ms,
             EXTRACT(EPOCH FROM (odl.decided_at - tep.paired_at)) * 1000 AS operator_response_latency_ms,
-            tep.kill_chain_latency_ms + (EXTRACT(EPOCH FROM (odl.decided_at - tep.paired_at)) * 1000) AS total_end_to_end_latency_ms,
+            tep.kill_chain_latency_ms + (EXTRACT(EPOCH FROM (odl.decided_at - tep.paired_at)) * 1000) AS total_end_to_end_latency_ms
         FROM operator_decision_logs odl
         JOIN targeting_effector_pairings tep ON odl.pairing_id = tep.pairing_id;
     """
